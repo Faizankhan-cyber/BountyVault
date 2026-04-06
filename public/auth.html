@@ -268,19 +268,28 @@
     }
 
     function checkExistingLogin() {
+      const savedRole = (localStorage.getItem("userRole") || "").toLowerCase();
+      if (savedRole) {
+        redirectBasedOnRole(savedRole);
+        return;
+      }
+
       const existing = localStorage.getItem("user");
       if (!existing) {
         return;
       }
 
       try {
-        const user = JSON.parse(existing);
+        const parsed = JSON.parse(existing);
+        const user = parsed && parsed.user ? parsed.user : parsed;
         if (user && user.role) {
-          redirectBasedOnRole(user.role);
+          localStorage.setItem("userRole", String(user.role).toLowerCase());
+          redirectBasedOnRole(String(user.role).toLowerCase());
         }
       } catch (error) {
         console.error("Invalid saved session:", error);
         localStorage.removeItem("user");
+        localStorage.removeItem("userRole");
       }
     }
 
@@ -330,7 +339,9 @@
 
         const user = await response.json();
         localStorage.setItem("user", JSON.stringify(user));
-        redirectBasedOnRole(user.role || selectedRole);
+        const resolvedRole = String((user && user.user && user.user.role) || user.role || selectedRole).toLowerCase();
+        localStorage.setItem("userRole", resolvedRole);
+        redirectBasedOnRole(resolvedRole);
       } catch (error) {
         console.error("Login error:", error);
         setError("Unable to reach auth service. Please try again.");
