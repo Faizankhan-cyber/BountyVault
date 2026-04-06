@@ -624,13 +624,6 @@
       visibleBounties: []
     };
 
-    const fallbackStats = {
-      totalBounties: "1,284",
-      activeWorkers: "5,920",
-      totalPaid: "$3.1M",
-      disputeRate: "1.8%"
-    };
-
     const searchForm = document.getElementById("bounty-search-form");
     const searchInput = document.getElementById("bounty-search-input");
     const bountyResults = document.getElementById("bounty-results");
@@ -638,25 +631,48 @@
     const learnMoreBtn = document.getElementById("learn-more-btn");
     const howItWorksSection = document.getElementById("how-it-works");
 
-    function labelize(key) {
-      return key
-        .replace(/([A-Z])/g, " $1")
-        .replace(/^./, char => char.toUpperCase());
+    function toNumber(value) {
+      const n = Number(value);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    function normalizeStats(stats) {
+      return [
+        { label: "Users", value: toNumber(stats && stats.users) },
+        {
+          label: "Bounties",
+          value: toNumber(stats && stats.bounties && stats.bounties.total)
+        },
+        {
+          label: "Disputes",
+          value: toNumber(stats && stats.disputes && stats.disputes.total)
+        },
+        {
+          label: "Transactions",
+          value: toNumber(stats && stats.transactions && stats.transactions.total)
+        }
+      ];
     }
 
     function renderStats(stats) {
       const statsGrid = document.getElementById("stats-grid");
       statsGrid.innerHTML = "";
 
-      Object.entries(stats).forEach(([key, value]) => {
+      normalizeStats(stats).forEach((item) => {
         const card = document.createElement("article");
         card.className = "stat-card";
         card.innerHTML = `
-          <div class="stat-value">${value}</div>
-          <div class="stat-label">${labelize(key)}</div>
+          <div class="stat-value">${item.value.toLocaleString()}</div>
+          <div class="stat-label">${item.label}</div>
         `;
         statsGrid.appendChild(card);
       });
+    }
+
+    function renderStatsUnavailable() {
+      const statsGrid = document.getElementById("stats-grid");
+      statsGrid.innerHTML =
+        '<article class="stat-card"><div class="stat-value">--</div><div class="stat-label">Stats unavailable</div></article>';
     }
 
     function toSearchBlob(bounty) {
@@ -760,7 +776,7 @@
         renderStats(stats);
       } catch (error) {
         console.error("Error loading stats:", error);
-        renderStats(fallbackStats);
+        renderStatsUnavailable();
       }
     }
 
