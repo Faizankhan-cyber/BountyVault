@@ -231,10 +231,6 @@
 
       <form id="login-form" class="login-form" novalidate>
         <div class="field">
-          <label for="name">Name</label>
-          <input type="text" id="name" name="name" autocomplete="name" required>
-        </div>
-        <div class="field">
           <label for="email">Email</label>
           <input type="email" id="email" name="email" autocomplete="email" required>
         </div>
@@ -291,6 +287,29 @@
         localStorage.removeItem("user");
         localStorage.removeItem("userRole");
       }
+
+      const pendingSignupRaw = localStorage.getItem("pendingSignup");
+      if (!pendingSignupRaw) {
+        return;
+      }
+
+      try {
+        const pendingSignup = JSON.parse(pendingSignupRaw);
+        if (pendingSignup && pendingSignup.email) {
+          document.getElementById("email").value = String(pendingSignup.email);
+        }
+        if (pendingSignup && pendingSignup.role) {
+          const role = String(pendingSignup.role).toLowerCase();
+          const roleCard = document.querySelector('.role-card[data-role="' + role + '"]');
+          if (roleCard) {
+            document.querySelectorAll(".role-card").forEach(node => node.classList.remove("selected"));
+            roleCard.classList.add("selected");
+            selectedRole = role;
+          }
+        }
+      } catch (error) {
+        console.error("Invalid pending signup payload:", error);
+      }
     }
 
     function setError(message) {
@@ -318,12 +337,16 @@
       const formData = new FormData(event.target);
       const payload = {
         role: selectedRole,
-        name: formData.get("name"),
         email: formData.get("email"),
         password: formData.get("password")
       };
 
       try {
+        console.log("[LOGIN] request payload:", {
+          ...payload,
+          password: payload.password ? "***" : ""
+        });
+
         const response = await fetch("/api/auth/login", {
           method: "POST",
           headers: {
@@ -332,15 +355,21 @@
           body: JSON.stringify(payload)
         });
 
+        const loginResult = await response.json();
+        console.log("[LOGIN] response:", loginResult);
+
         if (!response.ok) {
-          setError("Login failed. Please verify your credentials.");
+          setError((loginResult && loginResult.error) || "Login failed. Please verify your credentials.");
           return;
         }
 
-        const user = await response.json();
-        localStorage.setItem("user", JSON.stringify(user));
-        const resolvedRole = String((user && user.user && user.user.role) || user.role || selectedRole).toLowerCase();
+        localStorage.setItem("user", JSON.stringify(loginResult));
+        const resolvedRole = String((loginResult && loginResult.user && loginResult.user.role) || selectedRole).toLowerCase();
+        const resolvedEmail = String((loginResult && loginResult.user && loginResult.user.email) || payload.email || "");
+
         localStorage.setItem("userRole", resolvedRole);
+        localStorage.setItem("userEmail", resolvedEmail);
+        localStorage.removeItem("pendingSignup");
         redirectBasedOnRole(resolvedRole);
       } catch (error) {
         console.error("Login error:", error);

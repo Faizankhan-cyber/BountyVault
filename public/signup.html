@@ -177,6 +177,11 @@
       </div>
 
       <div class="field">
+        <label for="password">Password</label>
+        <input id="password" name="password" type="password" autocomplete="new-password" required>
+      </div>
+
+      <div class="field">
         <label for="role">Role</label>
         <select id="role" name="role" required>
           <option value="" selected disabled>Select role</option>
@@ -198,18 +203,47 @@
     const signupForm = document.getElementById("signup-form");
     const signupNote = document.getElementById("signup-note");
 
-    signupForm.addEventListener("submit", (event) => {
+    signupForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const formData = new FormData(signupForm);
       const profile = {
         name: String(formData.get("name") || "").trim(),
         email: String(formData.get("email") || "").trim(),
+        password: String(formData.get("password") || ""),
         role: String(formData.get("role") || "").trim()
       };
 
-      localStorage.setItem("pendingSignup", JSON.stringify(profile));
-      signupNote.textContent = "Profile captured. Redirecting to login...";
-      window.location.href = "auth.html";
+      try {
+        console.log("[SIGNUP] request payload:", {
+          ...profile,
+          password: profile.password ? "***" : ""
+        });
+
+        const response = await fetch("/api/auth/signup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(profile)
+        });
+
+        const data = await response.json();
+        console.log("[SIGNUP] response:", data);
+
+        if (!response.ok) {
+          signupNote.textContent = data && data.error ? data.error : "Signup failed. Please try again.";
+          return;
+        }
+
+        localStorage.setItem("pendingSignup", JSON.stringify({
+          email: profile.email,
+          role: profile.role
+        }));
+
+        signupNote.textContent = "Signup successful. Redirecting to login...";
+        window.location.href = "auth.html";
+      } catch (error) {
+        console.error("[SIGNUP] error:", error);
+        signupNote.textContent = "Unable to reach signup service. Please try again.";
+      }
     });
   </script>
 </body>

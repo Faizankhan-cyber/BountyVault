@@ -119,9 +119,53 @@ app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
+app.post("/api/auth/signup", (req, res) => {
+  try {
+    console.log("[AUTH][SIGNUP] request body:", req.body);
+
+    const name = String(req.body && req.body.name ? req.body.name : "").trim();
+    const email = String(req.body && req.body.email ? req.body.email : "").trim().toLowerCase();
+    const password = String(req.body && req.body.password ? req.body.password : "");
+    const role = String(req.body && req.body.role ? req.body.role : "").trim().toLowerCase();
+
+    if (!name || !email || !password || !role) {
+      return res.status(400).json({ error: "name, email, password, and role are required" });
+    }
+
+    if (!["poster", "worker", "admin"].includes(role)) {
+      return res.status(400).json({ error: "role must be poster, worker, or admin" });
+    }
+
+    const existing = db.prepare("SELECT id FROM users WHERE email = ?").get(email);
+    if (existing) {
+      return res.status(409).json({ error: "user already exists" });
+    }
+
+    const result = db
+      .prepare("INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, ?)")
+      .run(name, email, password, role);
+
+    const user = db
+      .prepare("SELECT id, name, email, role FROM users WHERE id = ?")
+      .get(result.lastInsertRowid);
+
+    return res.status(201).json({
+      message: "signup successful",
+      user
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+});
+
 app.post("/api/auth/login", (req, res) => {
   try {
-    const { email, password } = req.body;
+    console.log("[AUTH][LOGIN] request body:", req.body);
+
+    const email = String(req.body && req.body.email ? req.body.email : "").trim().toLowerCase();
+    const password = String(req.body && req.body.password ? req.body.password : "");
+    const role = String(req.body && req.body.role ? req.body.role : "").trim().toLowerCase();
+
     if (!email || !password) {
       return res.status(400).json({ error: "email and password are required" });
     }
@@ -132,6 +176,10 @@ app.post("/api/auth/login", (req, res) => {
 
     if (!user || user.password !== password) {
       return res.status(401).json({ error: "invalid credentials" });
+    }
+
+    if (role && user.role !== role) {
+      return res.status(403).json({ error: "selected role does not match account role" });
     }
 
     return res.json({
