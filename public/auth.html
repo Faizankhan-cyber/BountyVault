@@ -8,24 +8,26 @@
 </head>
 <body>
   <div class="auth-container">
-    <h2>Choose Your Role</h2>
-    <div class="role-cards">
+    <h1 class="auth-title">Welcome to BountyVault</h1>
+
+    <!-- Role Selection -->
+    <div class="role-selection">
       <div class="role-card" data-role="poster">
         <h3>Poster</h3>
-        <p>Create bounties and find talent</p>
+        <p>Create and manage bounties</p>
       </div>
       <div class="role-card" data-role="worker">
         <h3>Worker</h3>
-        <p>Complete tasks and earn rewards</p>
+        <p>Complete bounties and earn rewards</p>
       </div>
       <div class="role-card" data-role="admin">
         <h3>Admin</h3>
-        <p>Manage disputes and platform</p>
+        <p>Manage the platform</p>
       </div>
     </div>
 
-    <form id="auth-form" class="auth-form" style="display: none;">
-      <input type="hidden" id="role" name="role">
+    <!-- Login Form -->
+    <form id="login-form" class="login-form">
       <div class="form-group">
         <label for="name">Name</label>
         <input type="text" id="name" name="name" required>
@@ -38,52 +40,10 @@
         <label for="password">Password</label>
         <input type="password" id="password" name="password" required>
       </div>
-      <button type="submit" class="cta-button">Login</button>
+      <button type="submit" class="login-button">Login</button>
     </form>
   </div>
 
-  <script>
-    // Check if already logged in
-    const token = localStorage.getItem('token');
-    const role = localStorage.getItem('role');
-    if (token && role) {
-      window.location.href = `${role}.html`;
-    }
-
-    // Role selection
-    document.querySelectorAll('.role-card').forEach(card => {
-      card.addEventListener('click', () => {
-        document.querySelectorAll('.role-card').forEach(c => c.classList.remove('selected'));
-        card.classList.add('selected');
-        document.getElementById('role').value = card.dataset.role;
-        document.getElementById('auth-form').style.display = 'block';
-      });
-    });
-
-    // Form submission
-    document.getElementById('auth-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const formData = new FormData(e.target);
-      const data = Object.fromEntries(formData);
-
-      try {
-        const response = await fetch('/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        });
-        const result = await response.json();
-        if (response.ok) {
-          localStorage.setItem('token', result.token);
-          localStorage.setItem('role', data.role);
-          window.location.href = `${data.role}.html`;
-        } else {
-          alert('Login failed: ' + result.message);
-        }
-      } catch (err) {
-        alert('Error: ' + err.message);
-      }
-    });
-  </script>
+  <script src="auth.js"></script>
 </body>
 </html>
