@@ -794,6 +794,14 @@
       ["user", "userRole", "userEmail", "pendingSignup", "walletAddress"].forEach((key) => {
         localStorage.removeItem(key);
       });
+      if (peraWallet && peraWallet.disconnect) {
+        try {
+          peraWallet.disconnect();
+        } catch (error) {
+          console.log("Wallet disconnect note:", error);
+        }
+      }
+      state.activeWalletAddress = null;
     }
 
     function formatDate(value) {
@@ -1246,6 +1254,8 @@
 
     function bindEvents() {
       logoutBtn.addEventListener("click", () => {
+        state.activeWalletAddress = null;
+        setWalletChip();
         clearAuthSession();
         window.location.href = "auth.html";
       });
