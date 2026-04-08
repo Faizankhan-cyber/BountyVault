@@ -2,7 +2,27 @@
 (function initSharedWalletHelpers() {
   "use strict";
 
-  const sdk = window.PeraWalletConnect && window.PeraWalletConnect.PeraWalletConnect;
+  function resolvePeraWalletCtor() {
+    const peraGlobal = window.PeraWalletConnect;
+    if (!peraGlobal) {
+      return null;
+    }
+    if (typeof peraGlobal === "function") {
+      return peraGlobal;
+    }
+    if (typeof peraGlobal.PeraWalletConnect === "function") {
+      return peraGlobal.PeraWalletConnect;
+    }
+    if (typeof peraGlobal.default === "function") {
+      return peraGlobal.default;
+    }
+    if (peraGlobal.default && typeof peraGlobal.default.PeraWalletConnect === "function") {
+      return peraGlobal.default.PeraWalletConnect;
+    }
+    return null;
+  }
+
+  const sdk = resolvePeraWalletCtor();
   const peraWallet = sdk ? new sdk({ shouldShowSignTxnToast: true }) : null;
   const walletBtn = document.getElementById("wallet-btn") || document.getElementById("connect-wallet-btn");
   let connectedAccount = localStorage.getItem("walletAddress") || null;

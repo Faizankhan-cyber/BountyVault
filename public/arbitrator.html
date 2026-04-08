@@ -627,8 +627,28 @@
       returns: { type: "void" }
     });
 
-    const PeraWalletConnect = window.PeraWalletConnect.PeraWalletConnect;
-    const peraWallet = new PeraWalletConnect({ shouldShowSignTxnToast: true });
+    function resolvePeraWalletCtor() {
+      const peraGlobal = window.PeraWalletConnect;
+      if (!peraGlobal) {
+        return null;
+      }
+      if (typeof peraGlobal === "function") {
+        return peraGlobal;
+      }
+      if (typeof peraGlobal.PeraWalletConnect === "function") {
+        return peraGlobal.PeraWalletConnect;
+      }
+      if (typeof peraGlobal.default === "function") {
+        return peraGlobal.default;
+      }
+      if (peraGlobal.default && typeof peraGlobal.default.PeraWalletConnect === "function") {
+        return peraGlobal.default.PeraWalletConnect;
+      }
+      return null;
+    }
+
+    const PeraWalletConnect = resolvePeraWalletCtor();
+    const peraWallet = PeraWalletConnect ? new PeraWalletConnect({ shouldShowSignTxnToast: true }) : null;
 
     function parseArbitratorSession() {
       const userRole = (localStorage.getItem("userRole") || "").toLowerCase();
@@ -745,6 +765,16 @@
       }
 
       if (!peraWallet) {
+        if (typeof window.connectWallet === "function" && window.connectWallet !== connectWallet) {
+          const account = await window.connectWallet();
+          if (account) {
+            state.activeWalletAddress = account;
+            localStorage.setItem("walletAddress", state.activeWalletAddress);
+            setWalletChip();
+            showToast("Wallet connected", "success");
+            return;
+          }
+        }
         showToast("Pera Wallet SDK is unavailable", "warn");
         return;
       }

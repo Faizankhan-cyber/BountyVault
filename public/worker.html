@@ -6,6 +6,13 @@
   <title>BountyVault | Worker Dashboard</title>
   <!-- Pera SDK - must be first -->
   <script src="https://unpkg.com/@perawallet/connect/dist/umd/index.umd.js"></script>
+  <script>
+    if (!window.PeraWalletConnect) {
+      const peraFallback = document.createElement("script");
+      peraFallback.src = "https://cdn.jsdelivr.net/npm/@perawallet/connect/dist/umd/index.umd.js";
+      document.head.appendChild(peraFallback);
+    }
+  </script>
   <!-- Algorand SDK for making transactions -->
   <script src="https://unpkg.com/algosdk/dist/browser/algosdk.min.js"></script>
   <style>
@@ -665,17 +672,41 @@
 
     const toastWrap = document.getElementById("toast-wrap");
     let peraWallet = null;
+    const sharedConnectWalletFallback =
+      typeof window.connectWallet === "function" ? window.connectWallet : null;
+
+    function resolvePeraWalletCtor() {
+      const peraGlobal = window.PeraWalletConnect;
+      if (!peraGlobal) {
+        return null;
+      }
+      if (typeof peraGlobal === "function") {
+        return peraGlobal;
+      }
+      if (typeof peraGlobal.PeraWalletConnect === "function") {
+        return peraGlobal.PeraWalletConnect;
+      }
+      if (typeof peraGlobal.default === "function") {
+        return peraGlobal.default;
+      }
+      if (peraGlobal.default && typeof peraGlobal.default.PeraWalletConnect === "function") {
+        return peraGlobal.default.PeraWalletConnect;
+      }
+      return null;
+    }
 
     function initPeraWallet() {
       try {
-        if (window.PeraWalletConnect && window.PeraWalletConnect.PeraWalletConnect) {
-          const PeraWalletConnect = window.PeraWalletConnect.PeraWalletConnect;
+        const PeraWalletConnect = resolvePeraWalletCtor();
+        if (PeraWalletConnect) {
           peraWallet = new PeraWalletConnect({ shouldShowSignTxnToast: true });
+          return true;
         }
       } catch (error) {
         console.warn("Pera Wallet SDK not available:", error);
-        peraWallet = null;
       }
+      peraWallet = null;
+      return false;
     }
 
     function showToast(message, type) {
@@ -720,6 +751,20 @@
       }
 
       if (!peraWallet) {
+        initPeraWallet();
+      }
+
+      if (!peraWallet) {
+        if (typeof sharedConnectWalletFallback === "function") {
+          const account = await sharedConnectWalletFallback();
+          if (account) {
+            state.activeWalletAddress = account;
+            localStorage.setItem("walletAddress", state.activeWalletAddress);
+            setWalletChip();
+            showToast("Wallet connected", "success");
+            return;
+          }
+        }
         showToast("Pera Wallet SDK is unavailable", "error");
         return;
       }

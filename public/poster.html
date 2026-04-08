@@ -655,10 +655,30 @@
     const ALGOD_SERVER = localStorage.getItem("algodServer") || "https://testnet-api.algonode.cloud";
     let peraWallet = null;
 
+    function resolvePeraWalletCtor() {
+      const peraGlobal = window.PeraWalletConnect;
+      if (!peraGlobal) {
+        return null;
+      }
+      if (typeof peraGlobal === "function") {
+        return peraGlobal;
+      }
+      if (typeof peraGlobal.PeraWalletConnect === "function") {
+        return peraGlobal.PeraWalletConnect;
+      }
+      if (typeof peraGlobal.default === "function") {
+        return peraGlobal.default;
+      }
+      if (peraGlobal.default && typeof peraGlobal.default.PeraWalletConnect === "function") {
+        return peraGlobal.default.PeraWalletConnect;
+      }
+      return null;
+    }
+
     function initPeraWallet() {
       try {
-        if (window.PeraWalletConnect && window.PeraWalletConnect.PeraWalletConnect) {
-          const PeraWalletConnect = window.PeraWalletConnect.PeraWalletConnect;
+        const PeraWalletConnect = resolvePeraWalletCtor();
+        if (PeraWalletConnect) {
           peraWallet = new PeraWalletConnect({ shouldShowSignTxnToast: true });
         }
       } catch (error) {
@@ -746,6 +766,16 @@
       }
 
       if (!peraWallet) {
+        if (typeof window.connectWallet === "function" && window.connectWallet !== connectWallet) {
+          const account = await window.connectWallet();
+          if (account) {
+            state.activeWalletAddress = account;
+            localStorage.setItem("walletAddress", state.activeWalletAddress);
+            setWalletChip();
+            showToast("Wallet connected", "success");
+            return;
+          }
+        }
         showToast("Pera Wallet SDK is unavailable", "");
         return;
       }
